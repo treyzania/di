@@ -1,0 +1,8 @@
+[package]
+name = "di"
+version = "0.1.0"
+authors = ["treyzania <treyzania@gmail.com>"]
+
+[dependencies]
+discord = "0.8.0"
+libc = "0.2.31"
