@@ -1,3 +1,6 @@
 /target/
 **/*.rs.bk
 Cargo.lock
+
+# Don't steal AounBot.
+auth.conf
