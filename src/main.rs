@@ -13,10 +13,10 @@ fn main() {
 
     match init_discord() {
         Ok(d) => match d.connect() {
-            Ok((mut conn, re)) => event_loop(conn, re),
+            Ok((conn, re)) => event_loop(conn, re),
             Err(_) => println!("failed to connect")
         },
-        Err(_) => println!("failed to initialize!")
+        Err(InitError(r)) => println!("failed to initialize: {}", r)
     }
 
 }
@@ -37,30 +37,32 @@ fn event_loop(mut conn: DiscordConn, re: discord::model::ReadyEvent) {
 
 }
 
-fn init_discord() -> Result<Discord, ()> {
+struct InitError(&'static str);
+
+fn init_discord() -> Result<Discord, InitError> {
 
     // I am not proud of this.
     match env::var("DI_AUTH_MODE") {
         Ok(v) => match v.as_ref() {
             "bot" => match env::var("DI_BOT_TOKEN") {
                 Ok(token) => postprocess_discord_init(Discord::from_bot_token(token.as_ref())),
-                Err(_) => Err(())
+                Err(_) => Err(InitError("failed to get bot token"))
             },
             "user" => match (env::var("DI_EMAIL"), env::var("DI_PASSWORD")) {
                 (Ok(name), Ok(pass)) => postprocess_discord_init(Discord::new(name.as_ref(), pass.as_ref())),
-                _ => Err(())
+                _ => Err(InitError("failed to get user credentials"))
             },
-            _ => Err(())
+            _ => Err(InitError("invalid auth mode"))
         },
-        Err(_) => Err(())
+        Err(_) => Err(InitError("failed to get auth mode, is it set?"))
     }
 
 }
 
-fn postprocess_discord_init(rd: discord::Result<Discord>) -> Result<Discord, ()> {
+fn postprocess_discord_init(rd: discord::Result<Discord>) -> Result<Discord, InitError> {
     match rd {
         Ok(d) => Ok(d),
-        Err(_) => Err(())
+        Err(_) => Err(InitError("discord failed to auth"))
     }
 }
 
