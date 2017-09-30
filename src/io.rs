@@ -50,6 +50,21 @@ impl FifoFile {
             .map_err(|_| FfError::MkfifoFailed)
     }
 
+    /// The first one is the output, the second one is the input.
+    pub fn new_io_pair(parent: PathBuf) -> Result<(FifoFile, FifoFile), FfError> {
+
+        let mut pout = parent.clone();
+        let mut pin = parent.clone();
+        pout.push("out");
+        pin.push("in");
+
+        match (FifoFile::new(pout), FifoFile::new(pin)) {
+            (Ok(fout), Ok(fin)) => Ok((fout, fin)),
+            _ => Err(FfError::MkfifoFailed)
+        }
+
+    }
+
 }
 
 struct MkfifoError;
