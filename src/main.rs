@@ -1,6 +1,9 @@
 extern crate discord;
 extern crate libc;
 
+use std::env;
+
+use discord::Discord;
 use discord::Connection as DiscordConn;
 use discord::model::Event as DiscordEvent;
 
@@ -8,33 +11,57 @@ mod io;
 
 fn main() {
 
-    match init_connection("[lel]".into()) {
-        Ok((mut conn, re)) => loop {
-
-            match conn.recv_event() {
-                Ok(e) => match handle_event(e) {
-                    Loop => {}, // Do nothing.
-                    Exit => break
-                },
-                Err(ee) => println!("event recv error: {}", ee)
-            }
-
+    match init_discord() {
+        Ok(d) => match d.connect() {
+            Ok((mut conn, re)) => event_loop(conn, re),
+            Err(_) => println!("failed to connect")
         },
-        Err(_) => println!("failed to initialize")
+        Err(_) => println!("failed to initialize!")
     }
 
 }
 
-fn init_connection(bot_token: String) -> Result<(DiscordConn, discord::model::ReadyEvent), ()> {
+fn event_loop(mut conn: DiscordConn, re: discord::model::ReadyEvent) {
 
-    match discord::Discord::from_bot_token(bot_token.as_ref()) {
-        Ok(d) => match d.connect() {
-            Ok((conn, re)) => Ok((conn, re)),
-            Err(ce) => { println!("connect error: {}", ce); Err(()) }
-        },
-        Err(de) =>{ println!("init error: {}", de); Err(()) }
+    loop {
+
+        match conn.recv_event() {
+            Ok(e) => match handle_event(e) {
+                Loop => {}, // Do nothing.
+                Exit => break
+            },
+            Err(ee) => println!("event recv error: {}", ee)
+        }
+
     }
 
+}
+
+fn init_discord() -> Result<Discord, ()> {
+
+    // I am not proud of this.
+    match env::var("DI_AUTH_MODE") {
+        Ok(v) => match v.as_ref() {
+            "bot" => match env::var("DI_BOT_TOKEN") {
+                Ok(token) => postprocess_discord_init(Discord::from_bot_token(token.as_ref())),
+                Err(_) => Err(())
+            },
+            "user" => match (env::var("DI_EMAIL"), env::var("DI_PASSWORD")) {
+                (Ok(name), Ok(pass)) => postprocess_discord_init(Discord::new(name.as_ref(), pass.as_ref())),
+                _ => Err(())
+            },
+            _ => Err(())
+        },
+        Err(_) => Err(())
+    }
+
+}
+
+fn postprocess_discord_init(rd: discord::Result<Discord>) -> Result<Discord, ()> {
+    match rd {
+        Ok(d) => Ok(d),
+        Err(_) => Err(())
+    }
 }
 
 enum EventHandleResult {
